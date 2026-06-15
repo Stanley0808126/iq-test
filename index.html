@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>图形推理测试 — 矩阵挑战</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    min-height: 100vh;
+    color: #fff;
+    overflow-x: hidden;
+  }
+  .container {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Screen: Start */
+  #screen-start { text-align: center; padding-top: 60px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  #screen-start h1 { font-size: 32px; margin-bottom: 12px; background: linear-gradient(90deg, #f7971e, #ffd200); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  #screen-start .subtitle { color: #aaa; font-size: 15px; margin-bottom: 30px; line-height: 1.6; }
+  #screen-start .features { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px; }
+  #screen-start .features span { background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #ccc; }
+  .btn { display: inline-block; padding: 16px 48px; border-radius: 30px; font-size: 18px; font-weight: 600; border: none; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: linear-gradient(90deg, #f7971e, #ffd200); color: #1a1a2e; box-shadow: 0 4px 20px rgba(247,151,30,0.4); }
+  .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+  
+  /* Screen: Test */
+  #screen-test { display: none; flex: 1; flex-direction: column; }
+  .test-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; margin-bottom: 8px; }
+  .test-header .progress { font-size: 14px; color: #aaa; }
+  .test-header .progress strong { color: #ffd200; }
+  .test-header .timer { font-family: 'SF Mono', monospace; font-size: 18px; color: #ffd200; }
+  .progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #f7971e, #ffd200); border-radius: 2px; transition: width .5s; }
+  
+  .question-label { text-align: center; font-size: 13px; color: #888; margin-bottom: 12px; }
+  
+  /* 3x3 Grid */
+  .grid-container { display: flex; justify-content: center; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 12px; width: 240px; }
+  .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border-radius: 8px; font-size: 28px; color: #fff; position: relative; }
+  .cell.missing { background: rgba(255,255,255,0.03); border: 2px dashed rgba(255,200,0,0.3); }
+  .cell.missing::after { content: '?'; font-size: 20px; color: #666; }
+  
+  /* Options */
+  .options-label { text-align: center; font-size: 13px; color: #888; margin-bottom: 10px; }
+  .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+  .option { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; font-size: 28px; cursor: pointer; transition: all .2s; user-select: none; }
+  .option:active { transform: scale(0.95); }
+  .option.selected { border-color: #ffd200; background: rgba(255,200,0,0.15); box-shadow: 0 0 15px rgba(255,200,0,0.2); }
+  .option.correct { border-color: #4ade80; background: rgba(74,222,128,0.15); }
+  .option.wrong { border-color: #f87171; background: rgba(248,113,113,0.15); }
+  .option-number { position: absolute; top: 4px; left: 8px; font-size: 11px; color: #666; font-weight: 600; }
+  
+  .confirm-row { display: flex; gap: 12px; justify-content: center; margin-top: auto; padding-bottom: 20px; }
+  .confirm-row .btn { flex: 1; max-width: 200px; padding: 14px 20px; font-size: 16px; }
+  
+  /* Screen: Result */
+  #screen-result { display: none; flex: 1; flex-direction: column; padding-top: 30px; }
+  .result-card { background: rgba(255,255,255,0.06); border-radius: 20px; padding: 30px 24px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); }
+  .result-card .score { font-size: 64px; font-weight: 800; background: linear-gradient(90deg, #f7971e, #ffd200); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
+  .result-card .score-label { font-size: 14px; color: #aaa; margin-top: 4px; }
+  .result-card .detail { margin-top: 16px; display: flex; justify-content: center; gap: 30px; }
+  .result-card .detail-item { text-align: center; }
+  .result-card .detail-item .num { font-size: 22px; font-weight: 700; color: #ffd200; }
+  .result-card .detail-item .lbl { font-size: 12px; color: #888; margin-top: 2px; }
+  
+  .feedback { text-align: center; font-size: 18px; margin-bottom: 20px; }
+  
+  /* Screen: Follower Gate */
+  #screen-follower { display: none; flex: 1; flex-direction: column; justify-content: center; text-align: center; padding: 20px; }
+  #screen-follower h2 { font-size: 24px; margin-bottom: 8px; }
+  #screen-follower p { color: #aaa; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .input-group { display: flex; flex-direction: column; gap: 12px; max-width: 320px; margin: 0 auto; }
+  .input-group input { padding: 14px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; font-size: 16px; outline: none; text-align: center; }
+  .input-group input::placeholder { color: #666; }
+  .input-group input:focus { border-color: #ffd200; }
+  .input-group .btn { margin-top: 8px; }
+  
+  .result-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  
+  /* Screen: Answers Review */
+  #screen-review { display: none; flex: 1; flex-direction: column; padding-top: 20px; }
+  .review-item { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #666; }
+  .review-item.correct { border-left-color: #4ade80; }
+  .review-item.wrong { border-left-color: #f87171; }
+  .review-item .qnum { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .review-item .qgrid { display: grid; grid-template-columns: repeat(3, 24px); gap: 2px; margin-bottom: 6px; }
+  .review-item .qgrid div { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+  .review-item .qgrid div.missing { background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,200,0,0.3); }
+  .review-item .answer-row { font-size: 13px; color: #aaa; }
+  .review-item .answer-row .correct-ans { color: #4ade80; }
+  .review-item .answer-row .user-ans { color: #f87171; }
+  .review-item .explanation { font-size: 13px; color: #888; margin-top: 6px; line-height: 1.4; }
+  
+  .back-btn { display: inline-block; padding: 12px 24px; border-radius: 20px; background: rgba(255,255,255,0.08); color: #fff; border: none; cursor: pointer; font-size: 14px; margin: 8px auto; }
+  
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: #666; font-size: 14px; }
+  
+  /* Utility */
+  .hidden { display: none !important; }
+  .mt-auto { margin-top: auto; }
+  .gap { height: 16px; }
+  .text-gold { color: #ffd200; }
+  .text-green { color: #4ade80; }
+  .text-red { color: #f87171; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+
+  <!-- Screen: Start -->
+  <div id="screen-start">
+    <h1>🧠 图形推理测试</h1>
+    <div class="subtitle">
+      15道矩阵推理题<br>
+      找出3×3格中缺失的图案<br>
+      大约需要 8-12 分钟
+    </div>
+    <div class="features">
+      <span>🎯 15 题</span>
+      <span>⏱ 12 分钟</span>
+      <span>📊 即时得分</span>
+      <span>🔍 题目解析</span>
+    </div>
+    <button class="btn btn-primary" onclick="startTest()">开始测试 →</button>
+    <div style="margin-top: 24px; font-size: 12px; color: #555;">
+      无需注册 · 完成后获取得分分析
+    </div>
+  </div>
+
+  <!-- Screen: Test -->
+  <div id="screen-test">
+    <div class="test-header">
+      <div class="progress">第 <strong id="qnum">1</strong> / <span id="qtotal">15</span> 题</div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+    <div class="progress-bar"><div class="fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="question-label" id="qdifficulty">难度：简单</div>
+    <div class="grid-container">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="options-label">选择正确的图案：</div>
+    <div class="options" id="options"></div>
+    <div class="confirm-row">
+      <button class="btn btn-secondary" onclick="skipQuestion()">跳过</button>
+      <button class="btn btn-primary" id="confirm-btn" onclick="confirmAnswer()" disabled>确认答案</button>
+    </div>
+  </div>
+
+  <!-- Screen: Follower Gate -->
+  <div id="screen-follower">
+    <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+    <h2>测试完成！</h2>
+    <p>输入你的小红书号/昵称即可查看得分<br>
+    （仅用于发送测试结果，不会公开）</p>
+    <div class="input-group">
+      <input type="text" id="xhs-input" placeholder="输入小红书号或昵称" maxlength="30">
+      <button class="btn btn-primary" onclick="showResult()">查看结果 →</button>
+      <button class="btn btn-secondary" onclick="showResult()" style="font-size:14px; padding:12px;">跳过，直接看结果</button>
+    </div>
+  </div>
+
+  <!-- Screen: Result -->
+  <div id="screen-result">
+    <div class="result-card">
+      <div class="score" id="final-score">0</div>
+      <div class="score-label">正确 / 15 题</div>
+      <div id="score-message" class="feedback" style="margin-top:12px;"></div>
+      <div class="detail">
+        <div class="detail-item"><div class="num" id="correct-count">0</div><div class="lbl">✅ 正确</div></div>
+        <div class="detail-item"><div class="num" id="wrong-count">0</div><div class="lbl">❌ 错误</div></div>
+        <div class="detail-item"><div class="num" id="skipped-count">0</div><div class="lbl">⏭ 跳过</div></div>
+        <div class="detail-item"><div class="num" id="time-spent">0</div><div class="lbl">⏱ 用时</div></div>
+      </div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-primary" onclick="showReview()">📖 查看题目解析</button>
+      <button class="btn btn-secondary" onclick="shareResult()">📤 分享结果</button>
+      <button class="btn btn-secondary" onclick="retryTest()">🔄 再来一次</button>
+      <button class="btn btn-secondary" onclick="followXHS()" id="xhs-follow-btn" style="display:none;">📕 关注小红书获取每日一题</button>
+    </div>
+  </div>
+
+  <!-- Screen: Review -->
+  <div id="screen-review">
+    <h2 style="text-align:center; margin-bottom:16px; font-size:22px;">📖 题目解析</h2>
+    <div id="review-list"></div>
+    <div style="text-align:center; padding:16px 0;">
+      <button class="back-btn" onclick="showScreen('screen-result')">← 返回结果</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ QUESTION DATA ============
+const ALL_QUESTIONS = [
+  {day:1,difficulty:"简单",grid:[["●","○","●"],["○","●","○"],["●","○",null]],options:["●","○","◎","◉","⊙","◌"],correct:0,explanation:"每行每列交替填色和空心。缺失的位置是填色●。"},
+  {day:2,difficulty:"简单",grid:[["△","○","□"],["○","□","△"],["□","△",null]],options:["△","○","□","◇","☆","⬟"],correct:1,explanation:"每行每列形状不重复。缺失的是圆形○。"},
+  {day:3,difficulty:"简单",grid:[["⬜","⬛","⬜"],["⬛","⬜","⬛"],["⬜","⬛",null]],options:["⬜","⬛","⬜","⬛","⬜","⬛"],correct:0,explanation:"棋盘格交替黑白。缺失的位置是白色⬜。"},
+  {day:4,difficulty:"简单",grid:[["↑","→","↓"],["→","↓","←"],["↓","←",null]],options:["↑","→","↓","←","↗","↘"],correct:0,explanation:"每行每列箭头旋转90°。缺失的是向上↑。"},
+  {day:5,difficulty:"简单",grid:[["⬖","⬗","⬖"],["⬗","⬖","⬗"],["⬖","⬗",null]],options:["⬖","⬗","⬘","⬙","⬔","⬕"],correct:1,explanation:"平行四边形方向交替对角。缺失的是右斜⬗。"},
+  {day:6,difficulty:"中等",grid:[["◈","◇","◆"],["◇","◆","◈"],["◆","◈",null]],options:["◈","◇","◆","⬟","✦","⬢"],correct:2,explanation:"每行每列菱形方向/填色各不同。缺失的是实心菱形◆。"},
+  {day:7,difficulty:"中等",grid:[["Ⅰ","Ⅱ","Ⅲ"],["Ⅱ","Ⅲ","Ⅰ"],["Ⅲ","Ⅰ",null]],options:["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ","Ⅵ"],correct:1,explanation:"拉丁方阵，每行每列1-3各一次。缺失的是Ⅱ。"},
+  {day:8,difficulty:"中等",grid:[["⊖","⊕","⊖"],["⊕","⊖","⊕"],["⊖","⊕",null]],options:["⊖","⊕","⊗","⊘","⊙","⊚"],correct:0,explanation:"加减号交替排列。缺失的是减号⊖。"},
+  {day:9,difficulty:"中等",grid:[["⚪","⚫","⚪"],["⚫","⚪","⚪"],["⚪","⚪",null]],options:["⚪","⚫","⚪","⚪","⚫","⚪"],correct:1,explanation:"每行都有两个白圈一个黑圈。缺失的是黑圈⚫。"},
+  {day:10,difficulty:"中高",grid:[["▲","●","■"],["●","■","▲"],["■","▲",null]],options:["▲","●","■","★","⬟","◆"],correct:1,explanation:"每行每列包含三角形、圆形、方形各一次。缺失的是圆形●。"},
+  {day:11,difficulty:"中高",grid:[["★☆★","☆☆☆","★☆★"],["☆☆☆","★☆★","☆☆☆"],["★☆★","☆☆☆",null]],options:["★☆★","☆☆☆","★★★","☆★☆","★★★★★","☆☆☆☆☆"],correct:0,explanation:"每行每列星号数量规律为3-3-3。缺失的是★☆★。"},
+  {day:12,difficulty:"中高",grid:[["▲▲","▲▼","▼▲"],["▲▼","▼▲","▼▼"],["▼▲","▼▼",null]],options:["▲▲","▲▼","▼▲","▼▼","▲","▼"],correct:0,explanation:"三角形方向组合的拉丁方阵。缺失的是▲▲。"},
+  {day:13,difficulty:"中高",grid:[["⚪⚫","⚫⚪","⚪⚪"],["⚫⚪","⚪⚪","⚫⚫"],["⚪⚪","⚫⚫",null]],options:["⚪⚫","⚫⚪","⚪⚪","⚫⚫","⚫⚫⚪","⚪⚫⚫"],correct:0,explanation:"每行黑白球排列各不同。缺失的是⚪⚫。"},
+  {day:14,difficulty:"困难",grid:[["∘∙","∘∘","∙∙"],["∘∘","∙∙","∘∙"],["∙∙","∘∙",null]],options:["∘∙","∘∘","∙∙","∘","∙","∘∘∘"],correct:1,explanation:"每行每列黑白点组合全集。缺失的是∘∘。"},
+  {day:15,difficulty:"困难",grid:[["◇■","■◇","■■"],["■◇","■■","◇■"],["■■","◇■",null]],options:["◇■","■◇","■■","◇◇","■","◇"],correct:1,explanation:"菱形和方形组合的拉丁方阵。缺失的是■◇。"},
+  {day:16,difficulty:"困难",grid:[["▲▲▲","▲▲▼","▲▼▲"],["▲▲▼","▲▼▲","▲▼▼"],["▲▼▲","▲▼▼",null]],options:["▲▲▲","▲▲▼","▲▼▲","▲▼▼","▼▲▲","▼▲▼"],correct:2,explanation:"每行每列三角形组合不重复。缺失的是▲▼▲。"},
+  {day:17,difficulty:"困难",grid:[["⬡","⬢","⬡"],["⬢","⬡","⬢"],["⬡","⬢",null]],options:["⬡","⬢","⬣","⬤","⬥","⬦"],correct:1,explanation:"六边形填色交替。缺失的是实心⬢。"},
+  {day:18,difficulty:"超高",grid:[["⊞","⊟","⊞"],["⊟","⊞","⊟"],["⊞","⊟",null]],options:["⊞","⊟","⊠","⊡","⊞","⊟"],correct:0,explanation:"方块内加减号交替。缺失的是加号⊞。"},
+  {day:19,difficulty:"超高",grid:[["♤","♡","♢"],["♡","♢","♤"],["♢","♤",null]],options:["♤","♡","♢","♧","♤","♡"],correct:0,explanation:"花色拉丁方阵。缺失的是黑桃♤。"},
+  {day:20,difficulty:"超高",grid:[["▢","▣","▢"],["▣","▢","▣"],["▢","▣",null]],options:["▢","▣","▤","▥","▦","▧"],correct:1,explanation:"方块填色交替。缺失的是填色▣。"},
+  {day:21,difficulty:"超高",grid:[["◉","◎","◉"],["◎","◉","◎"],["◉","◎",null]],options:["◉","◎","◍","○","●","◐"],correct:0,explanation:"同心圆填色交替。缺失的是填色◉。"},
+  {day:22,difficulty:"专家",grid:[["⬧","⬨","⬧"],["⬨","⬧","⬨"],["⬧","⬨",null]],options:["⬧","⬨","⬩","⬪","⬫","⬬"],correct:1,explanation:"菱形旋转交替。缺失的是旋转⬨。"},
+  {day:23,difficulty:"专家",grid:[["◰","◳","◰"],["◳","◰","◳"],["◰","◳",null]],options:["◰","◳","◱","◲","◰","◳"],correct:0,explanation:"弧形填色交替。缺失的是左上填色◰。"},
+  {day:24,difficulty:"专家",grid:[["⟐","⟐","⟐"],["⟐","⟑","⟐"],["⟐","⟐",null]],options:["⟐","⟑","⟒","⟓","⟔","⟕"],correct:1,explanation:"星形图案不同组合。缺失的是⟑。"},
+  {day:25,difficulty:"专家",grid:[["▤","▥","▤"],["▥","▤","▥"],["▤","▥",null]],options:["▤","▥","▦","▣","▤","▥"],correct:0,explanation:"方块斜线交替。缺失的是左斜▤。"},
+  {day:26,difficulty:"大师",grid:[["⊡","⊡","⊞"],["⊡","⊞","⊟"],["⊞","⊟",null]],options:["⊞","⊡","⊟","⊠","⊞","⊡"],correct:2,explanation:"每格为其左与上之和。缺失的是⊟。"},
+  {day:27,difficulty:"大师",grid:[["⚬","⚬","⚭"],["⚬","⚭","⚮"],["⚭","⚮",null]],options:["⚬","⚭","⚮","⚯","⚬","⚭"],correct:2,explanation:"圆形状态组合。缺失的是⚮。"},
+  {day:28,difficulty:"大师",grid:[["⬔","⬕","⬔"],["⬕","⬔","⬕"],["⬔","⬕",null]],options:["⬔","⬕","⬖","⬗","⬘","⬙"],correct:0,explanation:"四边形方向交替。缺失的是⬔。"},
+  {day:29,difficulty:"大师",grid:[["⏣","⏢","⏣"],["⏢","⏣","⏢"],["⏣","⏢",null]],options:["⏣","⏢","⏤","⏥","⏧","⏦"],correct:0,explanation:"六边形符号交替。缺失的是⏣。"},
+  {day:30,difficulty:"大师",grid:[["⟡","⟢","⟡"],["⟢","⟡","⟢"],["⟡","⟢",null]],options:["⟡","⟢","⟣","⟤","⟥","⟡"],correct:0,explanation:"星形填色交替。缺失的是填色⟡。"}
+];
+
+// ============ STATE ============
+let questions = [];
+let currentIndex = 0;
+let selectedOption = null;
+let answers = []; // {selected, correct, skipped}
+let timerInterval = null;
+let seconds = 0;
+let xhsId = '';
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.random() * (i + 1) | 0;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ============ SCREEN CONTROL ============
+function showScreen(id) {
+  ['screen-start','screen-test','screen-follower','screen-result','screen-review'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'flex' : 'none';
+  });
+}
+
+// ============ START ============
+function startTest() {
+  const shuffled = shuffle([...ALL_QUESTIONS]);
+  questions = shuffled.slice(0, 15);
+  currentIndex = 0;
+  answers = [];
+  selectedOption = null;
+  seconds = 0;
+  showScreen('screen-test');
+  document.getElementById('qtotal').textContent = questions.length;
+  renderQuestion();
+  startTimer();
+}
+
+// ============ TIMER ============
+function startTimer() {
+  clearInterval(timerInterval);
+  seconds = 0;
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+// ============ RENDER ============
+function renderQuestion() {
+  const q = questions[currentIndex];
+  document.getElementById('qnum').textContent = currentIndex + 1;
+  document.getElementById('progress-fill').style.width = ((currentIndex) / questions.length * 100) + '%';
+  document.getElementById('qdifficulty').textContent = '难度：' + q.difficulty;
+  
+  // Grid
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  q.grid.forEach(row => {
+    row.forEach(cell => {
+      const div = document.createElement('div');
+      div.className = 'cell' + (cell === null ? ' missing' : '');
+      if (cell !== null) div.textContent = cell;
+      grid.appendChild(div);
+    });
+  });
+  
+  // Options
+  const optContainer = document.getElementById('options');
+  optContainer.innerHTML = '';
+  selectedOption = null;
+  document.getElementById('confirm-btn').disabled = true;
+  
+  q.options.forEach((opt, i) => {
+    const div = document.createElement('div');
+    div.className = 'option';
+    div.innerHTML = `<span class="option-number">${i+1}</span>${opt}`;
+    div.onclick = () => selectOption(i);
+    optContainer.appendChild(div);
+  });
+}
+
+function selectOption(idx) {
+  selectedOption = idx;
+  document.querySelectorAll('.option').forEach((el, i) => {
+    el.className = 'option' + (i === idx ? ' selected' : '');
+  });
+  document.getElementById('confirm-btn').disabled = false;
+}
+
+function confirmAnswer() {
+  if (selectedOption === null) return;
+  const q = questions[currentIndex];
+  const isCorrect = selectedOption === q.correct;
+  answers.push({selected: selectedOption, correct: q.correct, skipped: false, isCorrect});
+  
+  // Show correct/wrong feedback briefly
+  const opts = document.querySelectorAll('.option');
+  opts.forEach((el, i) => {
+    if (i === q.correct) el.classList.add('correct');
+    else if (i === selectedOption && !isCorrect) el.classList.add('wrong');
+  });
+  
+  setTimeout(() => nextQuestion(), 600);
+}
+
+function skipQuestion() {
+  const q = questions[currentIndex];
+  answers.push({selected: null, correct: q.correct, skipped: true, isCorrect: false});
+  nextQuestion();
+}
+
+function nextQuestion() {
+  currentIndex++;
+  if (currentIndex >= questions.length) {
+    clearInterval(timerInterval);
+    // Show follower gate
+    showScreen('screen-follower');
+    return;
+  }
+  renderQuestion();
+}
+
+// ============ FOLLOWER GATE ============
+function showResult() {
+  xhsId = document.getElementById('xhs-input').value.trim();
+  showScreen('screen-result');
+  displayResult();
+}
+
+// ============ RESULTS ============
+function displayResult() {
+  const correct = answers.filter(a => a.isCorrect).length;
+  const wrong = answers.filter(a => !a.isCorrect && !a.skipped).length;
+  const skipped = answers.filter(a => a.skipped).length;
+  const total = questions.length;
+  
+  document.getElementById('final-score').textContent = correct + '/' + total;
+  document.getElementById('correct-count').textContent = correct;
+  document.getElementById('wrong-count').textContent = wrong;
+  document.getElementById('skipped-count').textContent = skipped;
+  
+  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const s = String(seconds % 60).padStart(2, '0');
+  document.getElementById('time-spent').textContent = m + ':' + s;
+  
+  const pct = Math.round(correct / total * 100);
+  let msg, emoji;
+  if (pct >= 90) { msg = '🎉 推理大师！你的观察力非常出色！'; emoji = '🧠'; }
+  else if (pct >= 70) { msg = '👏 优秀！推理能力很强！'; emoji = '⭐'; }
+  else if (pct >= 50) { msg = '💪 不错！继续练习会更好！'; emoji = '💪'; }
+  else if (pct >= 30) { msg = '📈 有进步空间！多练图形推理题吧！'; emoji = '📈'; }
+  else { msg = '🤔 图形推理需要多练习，关注每日一题吧！'; emoji = '🤔'; }
+  
+  document.getElementById('score-message').textContent = msg;
+  
+  // Show follow button if user entered XHS id
+  if (xhsId) {
+    document.getElementById('xhs-follow-btn').style.display = 'block';
+    document.getElementById('xhs-follow-btn').textContent = '📕 已记录 ' + xhsId + '，关注领取每日一题';
+  } else {
+    document.getElementById('xhs-follow-btn').style.display = 'block';
+  }
+  
+  // Store result in localStorage
+  localStorage.setItem('iqtest_last_result', JSON.stringify({
+    date: new Date().toISOString(),
+    correct, wrong, skipped, total, seconds, xhsId
+  }));
+}
+
+// ============ REVIEW ============
+function showReview() {
+  showScreen('screen-review');
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+  
+  questions.forEach((q, i) => {
+    const a = answers[i];
+    const div = document.createElement('div');
+    div.className = 'review-item ' + (a.isCorrect ? 'correct' : 'wrong');
+    
+    let gridHtml = '';
+    q.grid.forEach(row => {
+      row.forEach(cell => {
+        gridHtml += `<div${cell === null ? ' class="missing"' : ''}>${cell || ''}</div>`;
+      });
+    });
+    
+    const ansRow = a.skipped
+      ? `<span class="text-red">⏭ 已跳过</span> · 正确答案：<span class="text-green">${q.options[q.correct]}</span>`
+      : `你的答案：<span class="${a.isCorrect ? 'text-green' : 'text-red'}">${q.options[a.selected]}</span> · 正确答案：<span class="text-green">${q.options[q.correct]}</span>`;
+    
+    div.innerHTML = `
+      <div class="qnum">第 ${i+1} 题 · ${q.difficulty} · ${a.isCorrect ? '✅' : a.skipped ? '⏭' : '❌'}</div>
+      <div class="qgrid">${gridHtml}</div>
+      <div class="answer-row">${ansRow}</div>
+      <div class="explanation">💡 ${q.explanation}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ============ SHARE ============
+function shareResult() {
+  const correct = answers.filter(a => a.isCorrect).length;
+  const total = questions.length;
+  const text = `🧠 我完成了图形推理测试！\n得分：${correct}/${total}\n快来挑战你的推理能力！\n👉 https://iqtest.xiaohongshu.com`;
+  
+  if (navigator.share) {
+    navigator.share({ title: '图形推理测试', text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('结果已复制到剪贴板！'));
+  }
+}
+
+function retryTest() {
+  startTest();
+}
+
+function followXHS() {
+  // The user's 小红书 profile URL
+  window.open('https://www.xiaohongshu.com/user/profile/62de89fb000000001f005339', '_blank');
+}
+
+// ============ INIT ============
+showScreen('screen-start');
+
+// Debug: log available questions
+console.log('IQ Test loaded: ' + ALL_QUESTIONS.length + ' questions available');
+</script>
+</body>
+</html>
