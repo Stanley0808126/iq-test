@@ -80,11 +80,7 @@
   #screen-follower { display: none; flex: 1; flex-direction: column; justify-content: center; text-align: center; padding: 20px; }
   #screen-follower h2 { font-size: 24px; margin-bottom: 8px; }
   #screen-follower p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-  .input-group { display: flex; flex-direction: column; gap: 12px; max-width: 320px; margin: 0 auto; }
-  .input-group input { padding: 14px 18px; border-radius: 12px; border: 1px solid rgba(99,102,241,0.2); background: #fff; color: #1a1a2e; font-size: 16px; outline: none; text-align: center; }
-  .input-group input::placeholder { color: #aaa; }
-  .input-group input:focus { border-color: #6366f1; }
-  .input-group .btn { margin-top: 8px; }
+
   
   .result-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
   
@@ -159,16 +155,8 @@
     </div>
   </div>
 
-  <!-- Screen: Follower Gate -->
-  <div id="screen-follower">
-    <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
-    <h2>测试完成！</h2>
-    <p>关注小红书即可获取<br><strong>完整答案解析 + 分数报告</strong></p>
-    <div class="input-group">
-      <button class="btn btn-primary" onclick="followToGetResult()">📕 关注小红书获取解析</button>
-      <button class="btn btn-secondary" onclick="showResult()" style="font-size:14px; padding:12px;">跳过，只看分数</button>
-    </div>
-  </div>
+  <!-- Screen: Follower Gate (no longer used - merged into result) -->
+  <div id="screen-follower" style="display:none;"></div>
 
   <!-- Screen: Result -->
   <div id="screen-result">
@@ -240,7 +228,7 @@ function shuffle(arr) {
 
 // ============ SCREEN CONTROL ============
 function showScreen(id) {
-  ['screen-start','screen-test','screen-follower','screen-result'].forEach(s => {
+  ['screen-start','screen-test','screen-result'].forEach(s => {
     document.getElementById(s).style.display = s === id ? 'flex' : 'none';
   });
 }
@@ -371,17 +359,12 @@ function nextQuestion() {
   currentIndex++;
   if (currentIndex >= questions.length) {
     clearInterval(timerInterval);
-    // Show follower gate first
-    showScreen('screen-follower');
+    // Go directly to result screen
+    showScreen('screen-result');
+    displayResult();
     return;
   }
   renderQuestion();
-}
-
-// ============ FOLLOWER GATE ============
-function showResult() {
-  showScreen('screen-result');
-  displayResult();
 }
 
 // ============ RESULTS ============
