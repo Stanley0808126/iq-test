@@ -88,19 +88,7 @@
   
   .result-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
   
-  /* Screen: Answers Review */
-  #screen-review { display: none; flex: 1; flex-direction: column; padding-top: 20px; }
-  .review-item { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #999; box-shadow: 0 1px 8px rgba(0,0,0,0.03); }
-  .review-item.correct { border-left-color: #22c55e; }
-  .review-item.wrong { border-left-color: #ef4444; }
-  .review-item .qnum { font-size: 12px; color: #999; margin-bottom: 4px; }
-  .review-item .qgrid { display: grid; grid-template-columns: repeat(3, 32px); gap: 3px; margin-bottom: 6px; }
-  .review-item .qgrid div { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: #f0f2ff; border-radius: 4px; }
-  .review-item .qgrid div.missing { background: #f0f2ff; border: 1px dashed rgba(99,102,241,0.4); }
-  .review-item .answer-row { font-size: 13px; color: #666; }
-  .review-item .answer-row .correct-ans { color: #22c55e; }
-  .review-item .answer-row .user-ans { color: #ef4444; }
-  .review-item .explanation { font-size: 13px; color: #888; margin-top: 6px; line-height: 1.4; }
+  
 
   /* Colorful shapes: each unicode symbol gets a distinct color */
   .shape-blue { color: #3b82f6; }
@@ -175,12 +163,10 @@
   <div id="screen-follower">
     <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
     <h2>测试完成！</h2>
-    <p>输入你的小红书号/昵称即可查看得分<br>
-    （仅用于发送测试结果，不会公开）</p>
+    <p>关注小红书即可获取<br><strong>完整答案解析 + 分数报告</strong></p>
     <div class="input-group">
-      <input type="text" id="xhs-input" placeholder="输入小红书号或昵称" maxlength="30">
-      <button class="btn btn-primary" onclick="showResult()">查看结果 →</button>
-      <button class="btn btn-secondary" onclick="showResult()" style="font-size:14px; padding:12px;">跳过，直接看结果</button>
+      <button class="btn btn-primary" onclick="followToGetResult()">📕 关注小红书获取解析</button>
+      <button class="btn btn-secondary" onclick="showResult()" style="font-size:14px; padding:12px;">跳过，只看分数</button>
     </div>
   </div>
 
@@ -191,26 +177,13 @@
       <div class="score-label">正确 / 15 题</div>
       <div id="score-message" class="feedback" style="margin-top:12px;"></div>
       <div class="detail">
-        <div class="detail-item"><div class="num" id="correct-count">0</div><div class="lbl">✅ 正确</div></div>
-        <div class="detail-item"><div class="num" id="wrong-count">0</div><div class="lbl">❌ 错误</div></div>
-        <div class="detail-item"><div class="num" id="skipped-count">0</div><div class="lbl">⏭ 跳过</div></div>
         <div class="detail-item"><div class="num" id="time-spent">0</div><div class="lbl">⏱ 用时</div></div>
       </div>
     </div>
     <div class="result-actions">
-      <button class="btn btn-primary" onclick="showReview()">📖 查看题目解析</button>
-      <button class="btn btn-secondary" onclick="shareResult()">📤 分享结果</button>
+      <button class="btn btn-primary" onclick="followToGetResult()">📕 关注小红书获取详细解析</button>
+      <button class="btn btn-secondary" onclick="shareScore()">📤 分享成绩</button>
       <button class="btn btn-secondary" onclick="retryTest()">🔄 再来一次</button>
-      <button class="btn btn-secondary" onclick="followXHS()" id="xhs-follow-btn" style="display:none;">📕 关注小红书获取每日一题</button>
-    </div>
-  </div>
-
-  <!-- Screen: Review -->
-  <div id="screen-review">
-    <h2 style="text-align:center; margin-bottom:16px; font-size:22px;">📖 题目解析</h2>
-    <div id="review-list"></div>
-    <div style="text-align:center; padding:16px 0;">
-      <button class="back-btn" onclick="showScreen('screen-result')">← 返回结果</button>
     </div>
   </div>
 </div>
@@ -257,8 +230,6 @@ let selectedOption = null;
 let answers = []; // {selected, correct, skipped}
 let timerInterval = null;
 let seconds = 0;
-let xhsId = '';
-
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.random() * (i + 1) | 0;
@@ -406,7 +377,7 @@ function nextQuestion() {
   currentIndex++;
   if (currentIndex >= questions.length) {
     clearInterval(timerInterval);
-    // Show follower gate
+    // Show follower gate first
     showScreen('screen-follower');
     return;
   }
@@ -415,7 +386,6 @@ function nextQuestion() {
 
 // ============ FOLLOWER GATE ============
 function showResult() {
-  xhsId = document.getElementById('xhs-input').value.trim();
   showScreen('screen-result');
   displayResult();
 }
@@ -423,81 +393,59 @@ function showResult() {
 // ============ RESULTS ============
 function displayResult() {
   const correct = answers.filter(a => a.isCorrect).length;
-  const wrong = answers.filter(a => !a.isCorrect && !a.skipped).length;
-  const skipped = answers.filter(a => a.skipped).length;
   const total = questions.length;
   
   document.getElementById('final-score').textContent = correct + '/' + total;
-  document.getElementById('correct-count').textContent = correct;
-  document.getElementById('wrong-count').textContent = wrong;
-  document.getElementById('skipped-count').textContent = skipped;
   
   const m = String(Math.floor(seconds / 60)).padStart(2, '0');
   const s = String(seconds % 60).padStart(2, '0');
   document.getElementById('time-spent').textContent = m + ':' + s;
   
   const pct = Math.round(correct / total * 100);
-  let msg, emoji;
-  if (pct >= 90) { msg = '🎉 推理大师！你的观察力非常出色！'; emoji = '🧠'; }
-  else if (pct >= 70) { msg = '👏 优秀！推理能力很强！'; emoji = '⭐'; }
-  else if (pct >= 50) { msg = '💪 不错！继续练习会更好！'; emoji = '💪'; }
-  else if (pct >= 30) { msg = '📈 有进步空间！多练图形推理题吧！'; emoji = '📈'; }
-  else { msg = '🤔 图形推理需要多练习，关注每日一题吧！'; emoji = '🤔'; }
+  let msg;
+  if (pct >= 90) { msg = '🎉 推理大师！你的观察力非常出色！'; }
+  else if (pct >= 70) { msg = '👏 优秀！推理能力很强！'; }
+  else if (pct >= 50) { msg = '💪 不错！继续练习会更好！'; }
+  else if (pct >= 30) { msg = '📈 有进步空间！多练图形推理题吧！'; }
+  else { msg = '🤔 图形推理需要多练习！'; }
   
   document.getElementById('score-message').textContent = msg;
   
-  // Show follow button if user entered XHS id
-  if (xhsId) {
-    document.getElementById('xhs-follow-btn').style.display = 'block';
-    document.getElementById('xhs-follow-btn').textContent = '📕 已记录 ' + xhsId + '，关注领取每日一题';
-  } else {
-    document.getElementById('xhs-follow-btn').style.display = 'block';
-  }
-  
-  // Store result in localStorage
-  localStorage.setItem('iqtest_last_result', JSON.stringify({
+  // Save result for later retrieval when they follow
+  const resultData = {
     date: new Date().toISOString(),
-    correct, wrong, skipped, total, seconds, xhsId
-  }));
+    correct,
+    total,
+    seconds,
+    answers: answers.map((a, i) => ({
+      day: questions[i].day,
+      difficulty: questions[i].difficulty,
+      selected: a.selected,
+      correctIndex: a.correct,
+      correctValue: questions[i].options[a.correct],
+      explanation: questions[i].explanation,
+      skipped: a.skipped,
+      isCorrect: a.isCorrect
+    }))
+  };
+  localStorage.setItem('iqtest_result', JSON.stringify(resultData));
 }
 
-// ============ REVIEW ============
-function showReview() {
-  showScreen('screen-review');
-  const list = document.getElementById('review-list');
-  list.innerHTML = '';
-  
-  questions.forEach((q, i) => {
-    const a = answers[i];
-    const div = document.createElement('div');
-    div.className = 'review-item ' + (a.isCorrect ? 'correct' : 'wrong');
-    
-    let gridHtml = '';
-    q.grid.forEach(row => {
-      row.forEach(cell => {
-        gridHtml += `<div${cell === null ? ' class="missing"' : ''}>${cell || ''}</div>`;
-      });
-    });
-    
-    const ansRow = a.skipped
-      ? `<span class="text-red">⏭ 已跳过</span> · 正确答案：<span class="text-green">${q.options[q.correct]}</span>`
-      : `你的答案：<span class="${a.isCorrect ? 'text-green' : 'text-red'}">${q.options[a.selected]}</span> · 正确答案：<span class="text-green">${q.options[q.correct]}</span>`;
-    
-    div.innerHTML = `
-      <div class="qnum">第 ${i+1} 题 · ${q.difficulty} · ${a.isCorrect ? '✅' : a.skipped ? '⏭' : '❌'}</div>
-      <div class="qgrid">${gridHtml}</div>
-      <div class="answer-row">${ansRow}</div>
-      <div class="explanation">💡 ${q.explanation}</div>
-    `;
-    list.appendChild(div);
-  });
+// ============ FOLLOW TO UNLOCK ANSWERS ============
+function followToGetResult() {
+  // Save that they came from the test
+  localStorage.setItem('iqtest_pending_follow', 'true');
+  // Open 小红书 profile
+  window.open('https://www.xiaohongshu.com/user/profile/62de89fb000000001f005339', '_blank');
+  // Show confirmation message
+  alert('✅ 感谢关注！\n\n请私信发送"测试结果"\n我会把详细解析发给你！');
 }
 
 // ============ SHARE ============
-function shareResult() {
+function shareScore() {
   const correct = answers.filter(a => a.isCorrect).length;
   const total = questions.length;
-  const text = `🧠 我完成了图形推理测试！\n得分：${correct}/${total}\n快来挑战你的推理能力！\n👉 https://iqtest.xiaohongshu.com`;
+  const text = `🧠 我完成了图形推理测试！\n得分：${correct}/${total}\n快来挑战你的推理能力！`;
   
   if (navigator.share) {
     navigator.share({ title: '图形推理测试', text });
@@ -508,11 +456,6 @@ function shareResult() {
 
 function retryTest() {
   startTest();
-}
-
-function followXHS() {
-  // The user's 小红书 profile URL
-  window.open('https://www.xiaohongshu.com/user/profile/62de89fb000000001f005339', '_blank');
 }
 
 // ============ INIT ============
