@@ -228,7 +228,7 @@ const ALL_QUESTIONS = [
   {day:8,difficulty:"中等",grid:[["⊖","⊕","⊖"],["⊕","⊖","⊕"],["⊖","⊕",null]],options:["⊖","⊕","⊗","⊘","⊙","⊚"],correct:0,explanation:"加减号交替排列。缺失的是减号⊖。"},
   {day:9,difficulty:"中等",grid:[["⚪","⚫","⚪"],["⚫","⚪","⚪"],["⚪","⚪",null]],options:["⚪","⚫","⚪","⚪","⚫","⚪"],correct:1,explanation:"每行都有两个白圈一个黑圈。缺失的是黑圈⚫。"},
   {day:10,difficulty:"中高",grid:[["▲","●","■"],["●","■","▲"],["■","▲",null]],options:["▲","●","■","★","⬟","◆"],correct:1,explanation:"每行每列包含三角形、圆形、方形各一次。缺失的是圆形●。"},
-  {day:11,difficulty:"中高",grid:[["★☆★","☆☆☆","★☆★"],["☆☆☆","★☆★","☆☆☆"],["★☆★","☆☆☆",null]],options:["★☆★","☆☆☆","★★★","☆★☆","★★★★★","☆☆☆☆☆"],correct:3,explanation:"每行每列星号数量规律为3-3-3。缺失的是☆★☆（1个星）。"},
+  {day:11,difficulty:"中高",grid:[["★☆★","☆☆☆","★☆★"],["☆☆☆","★☆★","☆☆☆"],["★☆★","☆☆☆",null]],options:["★☆★","☆☆☆","★★★","☆★☆","★★★★★","☆☆☆☆☆"],correct:0,explanation:"棋盘格交替有★/无★的图案。缺失的是★☆★。"},
   {day:12,difficulty:"中高",grid:[["▲▲","▲▼","▼▲"],["▲▼","▼▲","▼▼"],["▼▲","▼▼",null]],options:["▲▲","▲▼","▼▲","▼▼","▲","▼"],correct:0,explanation:"三角形方向组合的拉丁方阵。缺失的是▲▲。"},
   {day:13,difficulty:"中高",grid:[["⚪⚫","⚫⚪","⚪⚪"],["⚫⚪","⚪⚪","⚫⚫"],["⚪⚪","⚫⚫",null]],options:["⚪⚫","⚫⚪","⚪⚪","⚫⚫","⚫⚫⚪","⚪⚫⚫"],correct:0,explanation:"每行黑白球排列各不同。缺失的是⚪⚫。"},
   {day:14,difficulty:"困难",grid:[["∘∙","∘∘","∙∙"],["∘∘","∙∙","∘∙"],["∙∙","∘∙",null]],options:["∘∙","∘∘","∙∙","∘","∙","∘∘∘"],correct:1,explanation:"每行每列黑白点组合全集。缺失的是∘∘。"},
@@ -381,14 +381,16 @@ function selectOption(idx) {
 function confirmAnswer() {
   if (selectedOption === null) return;
   const q = questions[currentIndex];
-  const isCorrect = selectedOption === q.correct;
+  // Compare by VALUE not index (some questions have same symbol at multiple indices)
+  const correctValue = q.options[q.correct];
+  const isCorrect = q.options[selectedOption] === correctValue;
   answers.push({selected: selectedOption, correct: q.correct, skipped: false, isCorrect});
   
   // Show correct/wrong feedback briefly
   const opts = document.querySelectorAll('.option');
   opts.forEach((el, i) => {
-    if (i === q.correct) el.classList.add('correct');
-    else if (i === selectedOption && !isCorrect) el.classList.add('wrong');
+    if (q.options[i] === correctValue) el.classList.add('correct');
+    else if (i === selectedOption) el.classList.add('wrong');
   });
   
   setTimeout(() => nextQuestion(), 600);
