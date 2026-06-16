@@ -240,7 +240,7 @@ function shuffle(arr) {
 
 // ============ SCREEN CONTROL ============
 function showScreen(id) {
-  ['screen-start','screen-test','screen-follower','screen-result','screen-review'].forEach(s => {
+  ['screen-start','screen-test','screen-follower','screen-result'].forEach(s => {
     document.getElementById(s).style.display = s === id ? 'flex' : 'none';
   });
 }
@@ -357,14 +357,8 @@ function confirmAnswer() {
   const isCorrect = q.options[selectedOption] === correctValue;
   answers.push({selected: selectedOption, correct: q.correct, skipped: false, isCorrect});
   
-  // Show correct/wrong feedback briefly
-  const opts = document.querySelectorAll('.option');
-  opts.forEach((el, i) => {
-    if (q.options[i] === correctValue) el.classList.add('correct');
-    else if (i === selectedOption) el.classList.add('wrong');
-  });
-  
-  setTimeout(() => nextQuestion(), 600);
+  // No feedback - immediately go to next question
+  nextQuestion();
 }
 
 function skipQuestion() {
